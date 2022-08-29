@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react';
 
-export const DebouncedInput = ({
+const DebouncedInput = ({
   label,
   value: initialValue,
   onChange,
   debounce = 500,
   ...props
 }: {
-  label: string,
+  label: string;
   value: string | number;
   onChange: (value: string | number) => void;
   debounce?: number;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange">) => {
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>) => {
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
@@ -24,16 +24,18 @@ export const DebouncedInput = ({
     }, debounce);
 
     return () => clearTimeout(timeout);
-  }, [value]);
+  }, [value, debounce, onChange]);
 
   return (
     <>
-        <label className="mr-3">{label}:</label>
-        <input
+      <label className="mr-3">{label}:</label>
+      <input
         {...props}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        />
+      />
     </>
   );
-}
+};
+
+export default DebouncedInput;
