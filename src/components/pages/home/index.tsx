@@ -1,79 +1,31 @@
 import React, { useMemo, useEffect, useCallback, useRef, useState } from "react"
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { request, gql } from "graphql-request";
 import Image from "next/image"
-import { PokemonData } from "../../../types";
+import { PokemonData } from "types";
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   Row,
   useReactTable
 } from "@tanstack/react-table";
 import { useVirtual } from "react-virtual";
-import PokemonTypeBadge from "../../common/PokemonTypeBadge";
-
-const FETCH_SIZE = 500;
-const POKEDEX_SIZE = 1154;
-
-function usePokemons() {
-    return useInfiniteQuery(['pokemons'], async ({ pageParam = 0 }) => {
-        const endpoint = "https://beta.pokeapi.co/graphql/v1beta" 
-        const query = gql`
-            query pokemons($offset: Int!, $limit: Int!) {
-                pokemons: pokemon_v2_pokemonsprites(offset: $offset, limit: $limit, order_by: { pokemon_id: asc }) {
-                    sprites
-                    pokemon: pokemon_v2_pokemon {
-                        id
-                        name
-                        stats: pokemon_v2_pokemonstats {
-                            baseStat: base_stat
-                            stat: pokemon_v2_stat {
-                            name
-                            }
-                        }
-                        types: pokemon_v2_pokemontypes {
-                            type: pokemon_v2_type {
-                            name
-                            }
-                        }
-                    }
-                }
-            }
-        `
-        const variables = {
-            offset: pageParam * FETCH_SIZE,
-            limit: FETCH_SIZE
-        }
-        const { pokemons } = await request(endpoint, query, variables);
-        return pokemons;
-    },
-    {
-        getNextPageParam: (_lastPage, allPages) => {
-            return allPages.length
-        },
-        keepPreviousData: true,
-        refetchOnWindowFocus: false,
-    });
-}
-
-//Refactor this
-function formatId(id: string) {
-    let formattedId = ""+id
-    while(formattedId.length < 3) {
-        formattedId = "0"+formattedId
-    }
-    return formattedId
-}
+import PokemonTypeBadge from "@components/common/PokemonTypeBadge";
+import { fuzzyFilter, formatNationalId } from "utils";
+import { POKEDEX_SIZE } from "consts"
+import { usePokemons } from "hooks"
+import { DebouncedInput } from "@components/common/Input";
 
 const HomeBody = () => {
     const [pageParam, setPageParam] = useState<number>(1)
+    const [globalFilter, setGlobalFilter] = useState<string>("")
+
     const { data, fetchNextPage, isFetching, isLoading, isError } = usePokemons();
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
-    const columns = React.useMemo<ColumnDef<PokemonData>[]>(
+    const columns = useMemo<ColumnDef<PokemonData>[]>(
         () => [
             {
                 accessorFn: ({ pokemon, sprites }) => [pokemon.id, sprites],
@@ -87,7 +39,7 @@ const HomeBody = () => {
                                     <Image className="object-cover" src={spritesParsed.front_default} width={56} height={42} />
                                 ) : <div className="w-[56px] h-[42px]"/>
                             }
-                            <p className="ml-1">{formatId(""+id)}</p>
+                            <p className="ml-1">{formatNationalId(""+id)}</p>
                         </div>
                     )
                 } 
@@ -113,6 +65,11 @@ const HomeBody = () => {
                         </div>
                     )
                 }
+            },
+            {
+                accessorFn: ({ pokemon }) => pokemon.stats.reduce((acc, value) => acc + value.baseStat, 0),
+                header: "Total",
+                cell: ({ getValue }) => <p className="font-bold">{getValue<number>()}</p>
             },
             {
                 accessorFn: ({ pokemon }) => pokemon.stats[0].baseStat,
@@ -153,13 +110,11 @@ const HomeBody = () => {
         (containerRefElement?: HTMLDivElement | null) => {
         if (containerRefElement) {
             const { scrollHeight, scrollTop, clientHeight } = containerRefElement
-            console.log("scrollHeight - scrollTop - clientHeight: ", scrollHeight - scrollTop - clientHeight)
             if (
                 scrollHeight - scrollTop - clientHeight < 900 &&
                 !isFetching &&
                 totalFetched < POKEDEX_SIZE
             ) {
-                console.log("hihihi")
                 setPageParam(pageParam => pageParam + 1)
                 fetchNextPage({ pageParam })
             }
@@ -175,9 +130,17 @@ const HomeBody = () => {
     const table = useReactTable({
         data: flatData,
         columns,
+        state: {
+            globalFilter,
+        },
+        onGlobalFilterChange: setGlobalFilter,
+        globalFilterFn: fuzzyFilter,
+        getFilteredRowModel: getFilteredRowModel(),
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        debugTable: false
+        debugTable: false,
+        debugHeaders: false,
+        debugColumns: false,
     });
 
     const { rows } = table.getRowModel();
@@ -194,7 +157,7 @@ const HomeBody = () => {
         ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
         : 0;
 
-    // console.log("re-render")
+    // console.log("env: ", process.env)
 
     return data ? (
         <main>
@@ -210,8 +173,17 @@ const HomeBody = () => {
             </div>
             {!isLoading || isError ? (
                 <>
+                    <div className="flex items-center justify-start mx-8 mt-8">
+                        <DebouncedInput
+                            label='Name'
+                            value={globalFilter ?? ''}
+                            onChange={(value) => setGlobalFilter(""+value)}
+                            className="p-2 font-lg rounded border border-block"
+                            placeholder="Search by name"
+                        />
+                    </div>
                     <div
-                        className="mx-8 h-[450px] max-w-full mt-8 overflow-auto"
+                        className="mx-8 h-[400px] max-w-full mt-8 overflow-auto"
                         onScroll={(e) => fetchMoreOnBottomReached(e.target as HTMLDivElement)}
                         ref={tableContainerRef}
                     >
