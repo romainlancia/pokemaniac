@@ -17,11 +17,11 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useVirtual } from 'react-virtual';
-import PokemonTypeBadge from '@components/common/PokemonTypeBadge';
+import PokemonTypeBadge from '@components/Common/PokemonTypeBadge';
 import { fuzzyFilter, formatNationalId } from 'utils';
 import { POKEDEX_SIZE } from 'consts';
 import usePokemons from 'hooks';
-import DebouncedInput from '@components/common/Input';
+import DebouncedInput from '@components/Common/Input';
 
 const HomeBody = () => {
   const [pageParam, setPageParam] = useState<number>(1);

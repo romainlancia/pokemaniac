@@ -1,6 +1,6 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import HomeBody from '@components/pages/home';
+import HomeBody from '@components/Pages/Home';
 
 const Home: NextPage = () => (
   <>
