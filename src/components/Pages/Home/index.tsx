@@ -131,7 +131,7 @@ const HomeBody = () => {
       if (containerRefElement) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
         if (
-          scrollHeight - scrollTop - clientHeight < 900 &&
+          scrollHeight - scrollTop - clientHeight < 3500 &&
           !isFetching &&
           totalFetched < POKEDEX_SIZE
         ) {
